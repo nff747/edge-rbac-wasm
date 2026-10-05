@@ -1,0 +1,6 @@
+{
+  "name": "edge-rbac-wasm",
+  "version": "1.0.0",
+  "description": "Ultra-fast stateless Authorization middleware compiled to WASM for Edge runtimes",
+  "author": "nff747 <nff747@users.noreply.github.com>"
+}
