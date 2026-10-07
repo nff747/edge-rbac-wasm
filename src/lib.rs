@@ -1,3 +1,4 @@
+pub mod graph;
 pub mod abac;
 pub mod resource;
 pub mod bitflags;
