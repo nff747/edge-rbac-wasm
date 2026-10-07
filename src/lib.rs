@@ -1,3 +1,4 @@
+pub mod audit;
 pub mod cache;
 pub mod policy;
 pub mod graph;
