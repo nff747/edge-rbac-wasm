@@ -1,3 +1,4 @@
+pub mod bitflags;
 use std::collections::{HashMap, HashSet};
 use wasm_bindgen::prelude::*;
 
