@@ -1,3 +1,4 @@
+pub mod compiler;
 pub mod tenant;
 pub mod audit;
 pub mod cache;
