@@ -1,3 +1,4 @@
+pub mod engine;
 pub mod wasm;
 pub mod validator;
 pub mod compiler;
