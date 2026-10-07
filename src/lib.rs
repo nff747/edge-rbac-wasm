@@ -1,3 +1,4 @@
+pub mod validator;
 pub mod compiler;
 pub mod tenant;
 pub mod audit;
