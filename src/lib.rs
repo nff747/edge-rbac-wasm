@@ -1,3 +1,4 @@
+pub mod tenant;
 pub mod audit;
 pub mod cache;
 pub mod policy;
