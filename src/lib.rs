@@ -1,3 +1,4 @@
+pub mod cache;
 pub mod policy;
 pub mod graph;
 pub mod abac;
