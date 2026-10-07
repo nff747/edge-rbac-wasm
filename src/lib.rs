@@ -1,3 +1,4 @@
+pub mod abac;
 pub mod resource;
 pub mod bitflags;
 use std::collections::{HashMap, HashSet};
