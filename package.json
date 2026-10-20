@@ -12,6 +12,7 @@
     }
   },
   "scripts": {
+    "build": "cargo build --release && tsc --noEmit",
     "test": "vitest run"
   },
   "author": "nff747 <nff747@users.noreply.github.com>",
