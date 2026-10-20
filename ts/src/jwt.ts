@@ -5,7 +5,13 @@ export interface JwtClaims {
   tenant_id?: number;
   roles?: number[];
   exp?: number;
+  nbf?: number;
   [key: string]: any;
+}
+
+export interface JwtValidationOptions {
+  clockSkewSeconds?: number;
+  checkNbf?: boolean;
 }
 
 export class EdgeJwtParser {
@@ -22,11 +28,17 @@ export class EdgeJwtParser {
     return JSON.parse(jsonStr);
   }
 
-  public static toRbacUser(token: string): RbacUser {
+  public static toRbacUser(token: string, options: JwtValidationOptions = {}): RbacUser {
     const claims = this.decodeUnverified(token);
+    const clockSkew = options.clockSkewSeconds ?? 0;
+    const nowSec = Date.now() / 1000;
 
-    if (claims.exp && claims.exp * 1000 < Date.now()) {
+    if (claims.exp !== undefined && claims.exp + clockSkew < nowSec) {
       throw new Error('Token has expired');
+    }
+
+    if (options.checkNbf && claims.nbf !== undefined && claims.nbf - clockSkew > nowSec) {
+      throw new Error('Token is not yet valid');
     }
 
     return {
