@@ -30,4 +30,28 @@ describe('EdgeJwtParser', () => {
 
     expect(() => EdgeJwtParser.toRbacUser(expiredToken)).toThrow('Token has expired');
   });
+
+  it('permits expired token if within configured clock skew tolerance window', () => {
+    const recentlyExpiredToken = makeMockJwt({
+      sub: 'user_skew',
+      exp: Math.floor(Date.now() / 1000) - 30 // expired 30s ago
+    });
+
+    expect(() => EdgeJwtParser.toRbacUser(recentlyExpiredToken)).toThrow('Token has expired');
+
+    const user = EdgeJwtParser.toRbacUser(recentlyExpiredToken, { clockSkewSeconds: 60 });
+    expect(user.id).toBe('user_skew');
+  });
+
+  it('validates not-before nbf claim when checkNbf option is enabled', () => {
+    const futureToken = makeMockJwt({
+      sub: 'user_future',
+      nbf: Math.floor(Date.now() / 1000) + 120, // valid in 2 minutes
+      exp: Math.floor(Date.now() / 1000) + 3600
+    });
+
+    expect(EdgeJwtParser.toRbacUser(futureToken).id).toBe('user_future');
+
+    expect(() => EdgeJwtParser.toRbacUser(futureToken, { checkNbf: true })).toThrow('Token is not yet valid');
+  });
 });
