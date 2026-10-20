@@ -6,11 +6,30 @@ pub struct ResourcePattern {
 
 impl ResourcePattern {
     pub fn new(pattern: &str) -> Self {
-        let segments = pattern.split(':').map(|s| s.to_string()).collect();
+        let normalized = Self::normalize_path(pattern);
+        let segments = normalized.split(':').map(|s| s.to_string()).collect();
         Self {
-            pattern: pattern.to_string(),
+            pattern: normalized,
             segments,
         }
+    }
+
+    pub fn normalize_path(path: &str) -> String {
+        path.trim()
+            .trim_matches(':')
+            .split(':')
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<&str>>()
+            .join(":")
+    }
+
+    pub fn is_exact(&self) -> bool {
+        !self.segments.iter().any(|s| s == "*" || s == "**")
+    }
+
+    pub fn is_wildcard(&self) -> bool {
+        !self.is_exact()
     }
 
     pub fn matches(&self, resource_path: &str) -> bool {
@@ -18,7 +37,8 @@ impl ResourcePattern {
             return true;
         }
 
-        let target_segments: Vec<&str> = resource_path.split(':').collect();
+        let normalized_target = Self::normalize_path(resource_path);
+        let target_segments: Vec<&str> = normalized_target.split(':').collect();
 
         let mut p_idx = 0;
         let mut t_idx = 0;
