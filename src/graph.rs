@@ -7,6 +7,8 @@ pub struct RoleGraph {
 }
 
 impl RoleGraph {
+    pub const DEFAULT_MAX_DEPTH: usize = 32;
+
     pub fn new() -> Self {
         Self {
             parents: HashMap::new(),
@@ -27,6 +29,39 @@ impl RoleGraph {
 
         self.parents.entry(child).or_default().insert(parent);
         Ok(())
+    }
+
+    pub fn add_edge_with_depth_limit(
+        &mut self,
+        child: u32,
+        parent: u32,
+        max_depth: usize,
+    ) -> Result<(), &'static str> {
+        self.add_edge(child, parent)?;
+        if self.get_max_depth(child) > max_depth {
+            if let Some(parents) = self.parents.get_mut(&child) {
+                parents.remove(&parent);
+            }
+            return Err("Maximum role inheritance depth exceeded");
+        }
+        Ok(())
+    }
+
+    pub fn get_max_depth(&self, role_id: u32) -> usize {
+        let mut max_depth = 0;
+        let mut stack = vec![(role_id, 0)];
+
+        while let Some((curr, depth)) = stack.pop() {
+            if depth > max_depth {
+                max_depth = depth;
+            }
+            if let Some(direct_parents) = self.parents.get(&curr) {
+                for &p in direct_parents {
+                    stack.push((p, depth + 1));
+                }
+            }
+        }
+        max_depth
     }
 
     pub fn get_all_ancestors(&self, role_id: u32) -> HashSet<u32> {
