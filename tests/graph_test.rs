@@ -25,3 +25,19 @@ fn test_cycle_detection_rejection() {
     // Self cycle
     assert_eq!(g.add_edge(10, 10), Err("Self-inheritance cycle detected"));
 }
+
+#[test]
+fn test_role_inheritance_depth_limit() {
+    let mut g = RoleGraph::new();
+    // 1 -> 2 -> 3 -> 4
+    assert!(g.add_edge_with_depth_limit(2, 1, 2).is_ok());
+    assert!(g.add_edge_with_depth_limit(3, 2, 2).is_ok());
+    assert_eq!(g.get_max_depth(3), 2);
+
+    // Adding 4 -> 3 would make depth 3, exceeding max_depth 2!
+    let err = g.add_edge_with_depth_limit(4, 3, 2);
+    assert_eq!(err, Err("Maximum role inheritance depth exceeded"));
+
+    // Ensure edge was reverted and depth is unaffected
+    assert_eq!(g.get_max_depth(4), 0);
+}
