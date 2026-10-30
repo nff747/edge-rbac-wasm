@@ -1,29 +1,10 @@
-export interface WasmInstanceMock {
-  canAccess: (roleId: number, resource: string, permMask: number) => boolean;
+/** Explicit policy adapter. It must be initialized with reviewed rules by the application. */
+export interface PolicyEngine {
+  canAccess(roles: number[], resource: string, permissionMask: number): boolean;
 }
 
-export class WasmLoader {
-  private static instance: WasmInstanceMock | null = null;
-
-  public static async getInstance(): Promise<WasmInstanceMock> {
-    if (this.instance) return this.instance;
-
-    // Isomorphic mock / fallback fallback engine matching Rust semantics
-    this.instance = {
-      canAccess: (roleId: number, resource: string, permMask: number) => {
-        // Admin role 3 has full permissions
-        if (roleId === 3) return true;
-        // Editor role 2 has read (1) and write (2)
-        if (roleId === 2 && (permMask === 1 || permMask === 2)) return true;
-        // Viewer role 1 has read (1)
-        if (roleId === 1 && permMask === 1) return true;
-        return false;
-      }
-    };
-    return this.instance;
-  }
-
-  public static reset(): void {
-    this.instance = null;
-  }
+/** Adapt an initialized wasm-bindgen WasmEdgeRbac instance. */
+export function adaptWasmPolicy(engine: { can_access_roles(roles: Uint32Array, resource: string, permissionMask: number): boolean }): PolicyEngine {
+  if (!engine || typeof engine.can_access_roles !== 'function') throw new Error('An initialized WASM policy engine is required');
+  return { canAccess: (roles, resource, mask) => engine.can_access_roles(Uint32Array.from(roles), resource, mask) };
 }

@@ -1,114 +1,59 @@
-# 🛡️ edge-rbac-wasm
+# edge-rbac-wasm
 
-> **Ultra-fast, stateless Authorization and Multi-Tenancy engine compiled to WebAssembly for Cloudflare Workers, Vercel Edge, and Node.js runtimes.**
+An experimental Rust/WebAssembly role-based authorization engine with TypeScript adapters. This work is **not yet production-ready**: it needs independent security review and testing on the intended edge runtimes. Earlier versions trusted unverified JWT claims and included a permissive mock policy; do not rely on those versions for authorization. The revised API is breaking.
 
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Rust_Tests-100%25_Passing-brightgreen.svg)]()
-[![Vitest](https://img.shields.io/badge/Vitest-100%25_Passing-brightgreen.svg)]()
-[![Throughput](https://img.shields.io/badge/Latency-%3C1%CE%BCs-blueviolet.svg)]()
+## Security model
 
----
+- JWT middleware requires a verifier. `createJwtVerifier` checks a signature with a trusted key, a configured issuer, audience and algorithm allowlist, and validates required identity claims. Key provisioning, rotation and identity-provider configuration are the application's responsibility. `decodeUnverified` must never make an access decision.
+- An engine starts with **no rules** and denies access by default. Configure rules from trusted application data; do not let untrusted users edit the policy.
+- Explicit deny takes precedence across all effective roles. Role inheritance rejects cycles and excessive depth.
+- The caller must resolve the target resource's tenant from trusted server-side data and pass it to the middleware or client. Reading the target tenant from the requester's token does not establish ownership. Tenant isolation is enabled by default; disabling it transfers that responsibility entirely to the application.
+- Authorization is a local decision, not a substitute for verifying identity, checking resource ownership, safe policy administration, logging, or a security review.
 
-## ⚡ The Problem
-B2B SaaS applications spend weeks writing repetitive, bug-prone Role-Based Access Control (RBAC) and Multi-Tenancy isolation logic. Existing solutions (like OPA/Rego) are heavy, require centralized network roundtrips, or lack native support for edge runtimes like Cloudflare Workers and Vercel Edge Functions.
+## Build and test locally
 
-## 🛡️ The Solution
-`edge-rbac-wasm` combines the speed of **Rust compiled to WASM** with edge-native TypeScript bindings:
-1. **Microsecond Latency**: Pure bitmask permission calculations (`u32` bitflags) evaluating in `< 1μs`.
-2. **Role Graph & Cycle Detection**: Directed Acyclic Graph (DAG) for role inheritance with cycle rejection.
-3. **Strict Multi-Tenant Isolation**: Hard boundaries between tenant resources with organizational parent-child hierarchies.
-4. **Declarative Policies**: Policy-as-Code with **Explicit Deny** precedence over Allow rules.
-5. **Contextual ABAC**: Dynamic attribute condition evaluations (IP, environment, department).
-6. **Zero-Roundtrip Edge Middlewares**: Drop-in middleware for Cloudflare Workers and Vercel Edge.
-
----
-
-## 🚀 Quick Start
-
-### Installation
-```bash
-npm install edge-rbac-wasm
-```
-
-### 1. Cloudflare Workers Middleware
-```typescript
-import { EdgeRbacClient, createCloudflareRbacMiddleware } from 'edge-rbac-wasm';
-
-const client = new EdgeRbacClient({ enforceTenantBoundary: true });
-const rbacMiddleware = createCloudflareRbacMiddleware(client);
-
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    // Intercepts request, decodes JWT, verifies permissions
-    const denial = await rbacMiddleware(request, 'write', 'documents:financials');
-    if (denial) return denial; // Returns 401/403 automatically if unauthorized
-
-    return new Response('Access Granted!');
-  }
-};
-```
-
-### 2. Vercel Edge Middleware
-```typescript
-import { EdgeRbacClient, createVercelEdgeHandler } from 'edge-rbac-wasm';
-
-const client = new EdgeRbacClient();
-const authorize = createVercelEdgeHandler(client);
-
-export async function middleware(req: Request) {
-  const result = await authorize(req, 'admin', 'api:system:config');
-  if (!result.authorized) {
-    return result.response!;
-  }
-  return new Response('Welcome Admin ' + result.userId);
-}
-```
-
----
-
-## 🏗️ Architecture Matrix
-
-```
-       Incoming HTTP Request (Bearer JWT)
-                       │
-                       ▼
-             [ EdgeJwtParser ]
-                       │
-          ┌────────────┴────────────┐
-          ▼                         ▼
-   Tenant Boundary Check     Decision Cache (LRU)
-          │                         │
-          ▼                         ▼ (Miss)
-    [ RoleGraph DAG ] ──────► [ PolicyDocument ]
-          │                         │
-          ▼                         ▼
-   Bitmask Evaluation        ABAC Conditions (IP, Env)
-          │                         │
-          └────────────┬────────────┘
-                       ▼
-               Decision: ALLOW/DENY
-                       │
-                       ├─► Return 200 / 403 Forbidden
-                       └─► Asynchronous EdgeAuditLogger
-```
-
----
-
-## 🧪 Testing & Verification
-
-### Rust Core
-```bash
-cargo test
-# All 11 test suites and 21 integration tests pass in 0.01s
-```
-
-### TypeScript Edge Layer
-```bash
+```sh
+npm install
+npm run build       # requires Rust and wasm-pack
 npm test
-# All 10 vitest test suites pass
+cargo test
 ```
 
----
+The npm build outputs JavaScript, declarations and a web-targeted WASM module under `dist/`. The optional WASM integration tests use a separately built Node-targeted module:
 
-## 📄 License
-Licensed under the [Apache License, Version 2.0](LICENSE).
+```sh
+wasm-pack build --target nodejs --dev --out-dir /tmp/edge-rbac-node
+EDGE_RBAC_WASM_TEST_PATH=/tmp/edge-rbac-node/edge_rbac_wasm.js npm test
+```
+
+## Configure a policy
+
+Initialize the generated WebAssembly module according to the requirements of your runtime, then add reviewed rules before serving requests. For example, after initialization:
+
+```ts
+import { WasmEdgeRbac } from 'edge-rbac-wasm/wasm';
+import { EdgeRbacClient, adaptWasmPolicy } from 'edge-rbac-wasm';
+
+const engine = new WasmEdgeRbac();
+engine.add_rule('document-read', 1, 'documents:**', 1, true);
+engine.add_rule('restricted-deny', 2, 'documents:restricted', 1, false);
+const client = new EdgeRbacClient({ policyEngine: adaptWasmPolicy(engine) });
+
+// `principal` must come from verified identity claims. The target tenant
+// must come from the actual resource record, not the requester's token.
+const allowed = await client.can(principal, 'read', resourceName, resourceTenantId);
+```
+
+This is an integration sketch: `principal`, `resourceName`, and `resourceTenantId` are application data, not built-in identities. The example grants role 1 read access; a matching deny for role 2 wins when both roles apply. Review every rule for your own resource naming scheme.
+
+For middleware, construct `createJwtVerifier` with the identity provider's trusted verification key, issuer, audience and allowed algorithms, then pass it with the client to `createCloudflareRbacMiddleware` or `createVercelEdgeHandler`. Each authorization call requires a trusted target tenant ID. The returned denial must be honored before accessing the resource.
+
+The `edge-rbac validate` CLI checks the shape of a JSON policy; **it does not load or apply the policy**. Application code must translate validated policy data into engine rules using trusted configuration.
+
+## Limitations
+
+The packaged module and signed-token-to-WASM path have been exercised in local Node tests; Cloudflare, Vercel, browsers, production key rotation, sustained performance, and real deployment configurations have not been verified by those tests. No latency, device compatibility, or security certification is guaranteed. Treat the system as experimental until independently audited and tested in your deployment.
+
+## License
+
+[Apache License 2.0](LICENSE).

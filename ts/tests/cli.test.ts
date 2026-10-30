@@ -9,7 +9,7 @@ describe('Edge RBAC CLI', () => {
   it('validates valid policy file from CLI argument', () => {
     fs.writeFileSync(tempFile, JSON.stringify({
       version: '1.0',
-      rules: [{ role: 'admin', resource: '*', permissions: ['admin'], effect: 'allow' }]
+      rules: [{ role: 1, resource: '*', permissions: ['admin'], effect: 'allow' }]
     }));
 
     const code = runCLI(['node', 'cli.js', 'validate', tempFile]);

@@ -1,18 +1,22 @@
 {
   "name": "edge-rbac-wasm",
-  "version": "1.0.0",
+  "version": "2.0.0-alpha.0",
   "type": "module",
-  "description": "Ultra-fast stateless Authorization middleware compiled to WASM for Edge runtimes",
-  "main": "./ts/src/index.ts",
-  "types": "./ts/src/index.ts",
+  "description": "Experimental WASM role-based authorization with verified JWT adapters",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./ts/src/index.ts",
-      "types": "./ts/src/index.ts"
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./wasm": {
+      "types": "./dist/wasm/edge_rbac_wasm.d.ts",
+      "import": "./dist/wasm/edge_rbac_wasm.js"
     }
   },
   "scripts": {
-    "build": "cargo build --release && tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json && wasm-pack build --target web --release --out-dir dist/wasm && node -e \"require('node:fs').rmSync('dist/wasm/.gitignore', {force:true})\"",
     "test": "vitest run"
   },
   "author": "nff747 <nff747@users.noreply.github.com>",
@@ -25,5 +29,15 @@
   },
   "bin": {
     "edge-rbac": "./bin/edge-rbac.js"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "dependencies": {
+    "jose": "^6.2.14"
   }
 }

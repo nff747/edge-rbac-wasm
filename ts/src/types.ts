@@ -1,3 +1,4 @@
+import type { PolicyEngine } from './wasm_loader.js';
 export type PermissionFlag = 
   | 'read'
   | 'write'
@@ -36,6 +37,7 @@ export interface AuditEntry {
 }
 
 export interface EdgeRbacConfig {
+  policyEngine?: PolicyEngine;
   cacheCapacity?: number;
   enableAuditLogging?: boolean;
   enforceTenantBoundary?: boolean;

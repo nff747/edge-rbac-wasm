@@ -3,7 +3,7 @@ import { runAuthorizationBenchmark } from '../src/benchmarks';
 
 describe('Performance Benchmarks', () => {
   it('executes thousands of decisions in milliseconds', async () => {
-    const res = await runAuthorizationBenchmark(1000);
+    const res = await runAuthorizationBenchmark(1000, { canAccess: () => true });
     expect(res.durationMs).toBeLessThan(100);
     expect(res.opsPerSec).toBeGreaterThan(10000);
   });

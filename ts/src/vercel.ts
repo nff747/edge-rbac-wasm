@@ -1,12 +1,14 @@
-import { EdgeRbacClient } from './client';
-import { EdgeJwtParser } from './jwt';
-import { PermissionFlag } from './types';
+import { EdgeRbacClient } from './client.js';
+import { EdgeJwtParser, type VerifiedTokenProvider } from './jwt.js';
+import { PermissionFlag } from './types.js';
 
-export function createVercelEdgeHandler(client: EdgeRbacClient) {
+export function createVercelEdgeHandler(client: EdgeRbacClient, verifyToken: VerifiedTokenProvider) {
+  if (typeof verifyToken !== 'function') throw new Error('A trusted token verifier is required');
   return async (
     req: Request,
     requiredPermission: PermissionFlag,
-    resource: string
+    resource: string,
+    targetTenantId: number
   ): Promise<{ authorized: boolean; response?: Response; userId?: string }> => {
     const authHeader = req.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -20,8 +22,8 @@ export function createVercelEdgeHandler(client: EdgeRbacClient) {
     }
 
     try {
-      const user = EdgeJwtParser.toRbacUser(authHeader.slice(7));
-      const decision = await client.authorize(user, requiredPermission, resource);
+      const user = EdgeJwtParser.fromVerifiedClaims(await verifyToken(authHeader.slice(7)));
+      const decision = await client.authorize(user, requiredPermission, resource, targetTenantId);
 
       if (!decision.granted) {
         return {
@@ -38,7 +40,7 @@ export function createVercelEdgeHandler(client: EdgeRbacClient) {
     } catch (err: any) {
       return {
         authorized: false,
-        response: new Response(JSON.stringify({ error: err.message }), {
+        response: new Response(JSON.stringify({ error: 'Authentication failed' }), {
           status: 401,
           headers: { 'Content-Type': 'application/json' }
         })

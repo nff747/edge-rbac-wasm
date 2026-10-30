@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { PolicySchemaParser } from './policy_loader';
+import { PolicySchemaParser } from './policy_loader.js';
 
 export function runCLI(argv: string[]): number {
   const args = argv.slice(2);
@@ -15,7 +15,7 @@ export function runCLI(argv: string[]): number {
       try {
         const content = fs.readFileSync(file, 'utf-8');
         const policy = PolicySchemaParser.parse(content);
-        console.log(`Policy valid: ${policy.rules.length} rules loaded.`);
+        console.log(`Policy schema valid: ${policy.rules.length} rules checked. No policy was applied.`);
         return 0;
       } catch (err: any) {
         console.error('Validation error:', err.message);
