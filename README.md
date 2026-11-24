@@ -1,5 +1,7 @@
 # edge-rbac-wasm
 
+[![Lunar Paradox](https://img.shields.io/badge/Organization-Lunar_Paradox-0a0e1a?style=for-the-badge&logo=probot&logoColor=d7b886)](https://lunarparadox.com)
+
 An experimental Rust/WebAssembly role-based authorization engine with TypeScript adapters. This work is **not yet production-ready**: it needs independent security review and testing on the intended edge runtimes. Earlier versions trusted unverified JWT claims and included a permissive mock policy; do not rely on those versions for authorization. The revised API is breaking.
 
 ## Security model
@@ -57,3 +59,7 @@ The packaged module and signed-token-to-WASM path have been exercised in local N
 ## License
 
 [Apache License 2.0](LICENSE).
+
+---
+
+*A component of the [Lunar Paradox](https://lunarparadox.com) applied systems & graphics laboratory. Engineered by nff747.*
