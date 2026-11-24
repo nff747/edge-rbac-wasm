@@ -19,7 +19,7 @@
     "build": "tsc -p tsconfig.build.json && wasm-pack build --target web --release --out-dir dist/wasm && node -e \"require('node:fs').rmSync('dist/wasm/.gitignore', {force:true})\"",
     "test": "vitest run"
   },
-  "author": "Lunar Paradox <engineering@lunarparadox.com>",
+  "author": "Lunar Paradox <hello@lunarparadox.com>",
   "license": "Apache-2.0",
   "devDependencies": {
     "@types/node": "^22.0.0",
